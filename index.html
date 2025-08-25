@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contador com Firebase</title>
+    <!-- Tailwind CSS para estilização -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center h-screen">
+
+    <div class="bg-white dark:bg-gray-800 text-center p-8 rounded-2xl shadow-lg w-full max-w-sm mx-4">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Contador em Tempo Real</h1>
+        <p class="text-gray-600 dark:text-gray-400 mb-6">O valor abaixo é sincronizado com o Firebase.</p>
+        
+        <!-- Elemento para exibir o contador -->
+        <div id="counter-display" class="bg-gray-100 dark:bg-gray-700 text-6xl font-bold text-gray-900 dark:text-white py-6 rounded-lg mb-8 transition-colors duration-300">
+            ...
+        </div>
+
+        <!-- Botão para incrementar o contador -->
+        <button id="increment-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300 dark:focus:ring-indigo-800">
+            Adicionar +1
+        </button>
+    </div>
+
+    <!-- Módulo para interagir com o Firebase -->
+    <script type="module">
+        // Importa as funções necessárias do SDK do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+
+        // Configuração do seu aplicativo da web do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyANIfGQrWpZRoYpeZbR3OS6NALMQxD49yI",
+            authDomain: "esp32contador-bbba6.firebaseapp.com",
+            projectId: "esp32contador-bbba6",
+            storageBucket: "esp32contador-bbba6.firebasestorage.app",
+            messagingSenderId: "139235168407",
+            appId: "1:139235168407:web:51a446e3d36d6cbd6b99d2",
+            measurementId: "G-BQP4Y4ZKDD"
+        };
+
+        // Inicializa o Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Elementos da página
+        const counterDisplay = document.getElementById('counter-display');
+        const incrementButton = document.getElementById('increment-button');
+
+        // Referência ao documento do contador no Firestore
+        // Vamos usar uma coleção 'counters' e um documento 'main_counter'
+        const counterRef = doc(db, "counters", "main_counter");
+
+        // Função principal assíncrona para lidar com a lógica
+        async function setupCounter() {
+            try {
+                // Autentica o usuário anonimamente para permitir a interação com o Firestore
+                await signInAnonymously(auth);
+                console.log("Autenticado anonimamente com sucesso.");
+
+                // Escuta por atualizações em tempo real no documento do contador
+                onSnapshot(counterRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        // Se o documento existir, exibe o valor do campo 'value'
+                        const data = docSnap.data();
+                        counterDisplay.textContent = data.value;
+                    } else {
+                        // Se o documento não existir, cria ele com o valor inicial 0
+                        console.log("Documento não encontrado! Criando um novo...");
+                        counterDisplay.textContent = '0';
+                        setDoc(counterRef, { value: 0 });
+                    }
+                }, (error) => {
+                    console.error("Erro ao escutar o documento:", error);
+                    counterDisplay.textContent = 'Erro';
+                });
+
+                // Adiciona o evento de clique ao botão
+                incrementButton.addEventListener('click', async () => {
+                    try {
+                        // Usa a operação atômica 'increment' para evitar condições de corrida
+                        await updateDoc(counterRef, {
+                            value: increment(1)
+                        });
+                        console.log("Contador incrementado com sucesso!");
+                    } catch (error) {
+                        console.error("Erro ao incrementar o contador: ", error);
+                    }
+                });
+
+            } catch (error) {
+                console.error("Erro na autenticação anônima:", error);
+                counterDisplay.textContent = 'Falha';
+            }
+        }
+
+        // Inicia a configuração do contador
+        setupCounter();
+    </script>
+</body>
+</html>
